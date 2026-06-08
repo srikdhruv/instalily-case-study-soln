@@ -1,4 +1,83 @@
-# Getting Started with Create React App
+# PartSelect Chat Agent Case Study
+
+This project implements a simple PartSelect chat agent for refrigerator and dishwasher support. The frontend is the provided React chat template. The backend is a FastAPI service with deterministic flow control, direct OpenAI API integration, and real PartSelect linkouts/scraping tools.
+
+See [docs/architecture.md](docs/architecture.md) for the flow and system design.
+
+## Frontend
+
+```bash
+npm start
+```
+
+The React app runs at [http://localhost:3000](http://localhost:3000).
+
+The frontend sends the full conversation history to the backend on every chat turn.
+
+## Backend
+
+Install Python dependencies:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+Create a local `.env` file for server-side keys:
+
+```bash
+OPENAI_API_KEY=your_openai_key_here
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_SEARCH_MODEL=gpt-4o-mini-search-preview
+```
+
+`.env` is ignored by git. See `.env.example` for the expected keys.
+
+Run the FastAPI backend:
+
+```bash
+uvicorn backend.app.main:app --reload --port 8000
+```
+
+The backend also works without `OPENAI_API_KEY` by returning deterministic fallback responses, which is useful for local testing.
+
+If your local Python does not have FastAPI/Uvicorn installed yet, you can run the dependency-free development server with the same `/chat` contract:
+
+```bash
+python3 -m backend.dev_server
+```
+
+## Tests
+
+Core backend logic uses standard-library tests:
+
+```bash
+python3 -m unittest backend.tests.test_agent
+```
+
+Frontend production build:
+
+```bash
+npm run build
+```
+
+## Supported V1 Flows
+
+- Troubleshooting for refrigerator and dishwasher symptoms.
+- Product/model information lookup.
+- Installation help and official PartSelect source links.
+- Compatibility checks with conservative `cannot_verify` fallback.
+- Part search/purchase linkout.
+- Official self-service/order status linkout: https://www.partselect.com/user/self-service/
+- Official Instant Repairman linkout: https://www.partselect.com/Instant-Repairman/
+- Product URL resolution through a small seeded map plus OpenAI web search, with verification before using product pages.
+
+## Case Study Docs
+
+- [Evaluator plan](docs/evaluator-plan.md)
+- [Design decisions and future expansion](docs/design-decisions.md)
+- [Architecture](docs/architecture.md)
+
+## Create React App Reference
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 

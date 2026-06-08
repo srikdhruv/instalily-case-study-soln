@@ -5,33 +5,50 @@ import { marked } from "marked";
 
 function ChatWindow() {
 
-  const defaultMessage = [{
+  const defaultMessage = {
     role: "assistant",
-    content: "Hi, how can I help you today?"
-  }];
+    content: "Hi, I can help with PartSelect refrigerator and dishwasher parts, troubleshooting, installation, compatibility, and order self-service."
+  };
 
-  const [messages,setMessages] = useState(defaultMessage)
+  const [messages,setMessages] = useState([defaultMessage])
   const [input, setInput] = useState("");
+  const [currentFlow, setCurrentFlow] = useState(null);
+  const [isSending, setIsSending] = useState(false);
 
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
       scrollToBottom();
   }, [messages]);
 
-  const handleSend = async (input) => {
-    if (input.trim() !== "") {
-      // Set user message
-      setMessages(prevMessages => [...prevMessages, { role: "user", content: input }]);
+  const handleSend = async (messageText = input) => {
+    if (messageText.trim() !== "" && !isSending) {
+      const userMessage = { role: "user", content: messageText };
+      const isRestart = ["start over", "restart", "new issue", "forget that"].includes(messageText.trim().toLowerCase());
+      const nextMessages = isRestart ? [defaultMessage, userMessage] : [...messages, userMessage];
+      setMessages(nextMessages);
       setInput("");
+      setIsSending(true);
 
-      // Call API & set assistant message
-      const newMessage = await getAIMessage(input);
-      setMessages(prevMessages => [...prevMessages, newMessage]);
+      try {
+        const newMessage = await getAIMessage({
+          messages: nextMessages,
+          currentFlow: isRestart ? null : currentFlow,
+        });
+        setCurrentFlow(newMessage.flow || null);
+        setMessages(prevMessages => [...prevMessages, newMessage]);
+      } catch (error) {
+        setMessages(prevMessages => [...prevMessages, {
+          role: "assistant",
+          content: "I couldn't reach the PartSelect assistant backend. Please make sure the FastAPI server is running on http://localhost:8000."
+        }]);
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
@@ -42,6 +59,24 @@ function ChatWindow() {
                   {message.content && (
                       <div className={`message ${message.role}-message`}>
                           <div dangerouslySetInnerHTML={{__html: marked(message.content).replace(/<p>|<\/p>/g, "")}}></div>
+                          {message.sources && message.sources.length > 0 && (
+                            <div className="sources">
+                              {message.sources.map((source, sourceIndex) => (
+                                <a key={sourceIndex} href={source.url} target="_blank" rel="noreferrer">
+                                  {source.label}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          {message.suggested_replies && message.suggested_replies.length > 0 && (
+                            <div className="suggested-replies">
+                              {message.suggested_replies.map((reply, replyIndex) => (
+                                <button key={replyIndex} onClick={() => handleSend(reply)}>
+                                  {reply}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                       </div>
                   )}
               </div>
@@ -59,9 +94,10 @@ function ChatWindow() {
                 }
               }}
               rows="3"
+              disabled={isSending}
             />
-            <button className="send-button" onClick={handleSend}>
-              Send
+            <button className="send-button" onClick={() => handleSend(input)} disabled={isSending}>
+              {isSending ? "Sending" : "Send"}
             </button>
           </div>
       </div>
